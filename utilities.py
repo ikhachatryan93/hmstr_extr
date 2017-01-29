@@ -3,6 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+import time
 
 
 def setup_phantomjs_browser(maximize=False):
@@ -30,25 +31,17 @@ def write_urls_to_file(name, urls):
                 print(str(e))
 
 
-def scroll_down(driver: webdriver, css_selector: str, max_scrolls=10000000):
+def scroll_down(driver: webdriver, css_selector: str):
     wait = WebDriverWait(driver, 10)
-    last_size = 0
-    for _ in range(max_scrolls):
-        current_size = driver.execute_script("window.scrollTo(0, document.body.scrollHeight);var "
-                                             "lenOfPage=document.body.scrollHeight;return lenOfPage;")
-        try:
-            wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, css_selector)))
-            if last_size == current_size:
-                if "disabled" not in driver.find_element_by_css_selector(css_selector).get_attribute("class"):
-                    current_size = driver.execute_script("window.scrollTo(0, 0);var "
-                                                         "lenOfPage=document.body.scrollHeight;return lenOfPage;")
-                    continue
-                break
-        except TimeoutException:
+    while True:
+        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
+        driver.execute_script("window.scrollTo(0, 0)")
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        click_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        if "disabled" in click_element.get_attribute("class"):
             break
-        except:
-            pass
-        last_size = current_size
+        # print("asd")
+        driver.save_screenshot("asd.png")
 
 
 def open_url(url_query: str, driver: webdriver):

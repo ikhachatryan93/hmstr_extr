@@ -7,10 +7,11 @@ homestars_search_query = "https://homestars.com/companies/search?utf8=%E2%9C%93&
 
 
 def extract(url_query):
-    # browser= utilities.setup_phantomjs_browser(maximize=True)
+    #browser= utilities.setup_phantomjs_browser(maximize=True)
     browser = utilities.setup_chrome_browser(maximize=True)
     utilities.open_url(url_query, browser)
-    extracted_services = homestars.extract_services(browser)
+    browser.save_screenshot("start.png")
+    extracted_services = homestars.extract_category(browser)
     #utilities.save_as_jquery(extracted_services)
    # print(len(extracted_services))
 
