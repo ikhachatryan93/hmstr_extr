@@ -17,7 +17,7 @@ homestars_url = "https://www.homestars.com/"
 
 def get_companies_urls(browser: webdriver, scroll_down=True):
     if scroll_down:
-        utilities.scroll_down(browser, next_page_css_selector)
+        utilities.scroll_down(browser, next_page_css_selector, 1)
     soup = BeautifulSoup(browser.page_source, "html5lib")
     browser.close()
     companies_results = soup.findAll("section", {"class", HomestarCompanyInfo.COMPANY_RESULTS_CSS_CLASS})
@@ -34,19 +34,20 @@ def run_category_extraction(url, companies_infos):
     companies_infos.append(c)
 
 
-def extract_category(browser: webdriver, parallel=5):
+def extract_category(browser: webdriver, parallel=1):
     companies_urls = get_companies_urls(browser)
     companies_infos = []
-    trds = []
-    for url in companies_urls:
-        t = threading.Thread(target=run_category_extraction, args=(url, companies_infos))
-        t.daemon = True
-        t.start()
-        trds.append(t)
-        while threading.active_count() > parallel:
-            time.sleep(0.2)
+    run_category_extraction(companies_urls[0], companies_infos)
+   # trds = []
+   # for url in companies_urls:
+   #     t = threading.Thread(target=run_category_extraction, args=(url, companies_infos))
+   #     t.daemon = True
+   #     t.start()
+   #     trds.append(t)
+   #     while threading.active_count() > parallel:
+   #         time.sleep(0.2)
 
-    for i in trds:
-        i.join()
+   # for i in trds:
+   #     i.join()
 
     return companies_infos

@@ -31,9 +31,9 @@ def write_urls_to_file(name, urls):
                 print(str(e))
 
 
-def scroll_down(driver: webdriver, css_selector: str):
+def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=1000000000):
     wait = WebDriverWait(driver, 10)
-    while True:
+    for _ in range(max_scroll_downs):
         wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
         driver.execute_script("window.scrollTo(0, 0)")
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
