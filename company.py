@@ -1,5 +1,7 @@
 import time
+import contextlib
 from bs4 import BeautifulSoup
+from urllib.request import urlopen
 from urllib.request import urljoin
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -16,20 +18,19 @@ class HomestarCompanyInfo:
     COMPANY_RESULTS_CSS_CLASS = "company-result"
     COMPANY_URL_CSS_CLASS = "company-result__name"
     COMPANY_CATEGORY_CSS_CLASS = "company-result__categories"
-    NF = "Could not find "
     logging.basicConfig(filename='scraping.log', level=logging.DEBUG)
 
     def __init__(self, company_url, browser_name="chrome"):
         self.company_info = dict(
-            url_id="", url_name=company_url, category_id="", category_name="", keyword="",
-            keyword_name="", shop_id="", shop_name="", shop_logo="", contact_person_name="",
-            phone="", country_id="", country_name="", province="", city="", location="",
+            url_name=company_url, category_name="", keyword="",
+            keyword_name="", shop_name="", shop_logo="", contact_person_name="",
+            phone="", country_name="", province="", city="", location="",
             address="", year_established="", number_of_employees="", payment_methods="", licenses="",
             workers_compensation="", is_bonded="", warranty_terms="", written_contract="",
             project_rate="", project_minimum="", liability_insurance="", website="", homestars_star_score="",
-            homestars_rating="", homestars_total_reviews="", homestars_review_id="", homestars_reviews=[],
-            homestars_review_user_id="", homestars_review_user_name="", homestars_review_date="",
-            homestars_review_location="", shop_photos="", shop_profile_id="", shop_profile_desc="")
+            homestars_rating="", homestars_total_reviews="", homestars_reviews=[],
+            homestars_review_user_name="", homestars_review_date="",
+            homestars_review_location="", shop_photos_links=[], shop_profile_desc="")
 
         if "phantomjs" in browser_name:
             self.company_page = utilities.setup_phantomjs_browser()
@@ -40,6 +41,7 @@ class HomestarCompanyInfo:
         self.company_page_source = BeautifulSoup(self.company_page.page_source, "html5lib")
         self.company_profile_details = self.company_page_source.find("div", {"class", "company-profile__details"})
         self.company_address_info = self.company_page_source.find("address", {"class": "company-header__address"})
+        self.NF = "From {}: could not find ".format(self.company_info["url_name"])
 
     def get_categories(self):
         try:
@@ -52,7 +54,7 @@ class HomestarCompanyInfo:
                 logging.error(self.NF + "category names")
                 return
 
-        self.company_info["category_name"] = categories.split(", ")
+        self.company_info["category_name"] = categories.strip(", ")
 
     def get_company_name(self):
         try:
@@ -121,7 +123,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "warranty terms")
             return
 
-        self.company_info["warranty_terms"] = warranty_terms.split(", ")
+        self.company_info["warranty_terms"] = warranty_terms.strip(", ")
 
     def get_bonded(self):
         try:
@@ -130,7 +132,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "bonded")
             return
 
-        self.company_info["is_bonded"] = bonded.split(", ")
+        self.company_info["is_bonded"] = bonded.strip(", ")
 
     def get_project_rate(self):
         try:
@@ -139,7 +141,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "project rate")
             return
 
-        self.company_info["project_rate"] = rate.split(", ")
+        self.company_info["project_rate"] = rate.strip(", ")
 
     def get_project_minimum(self):
         try:
@@ -148,7 +150,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "project minimum")
             return
 
-        self.company_info["project_minimum"] = name.split(", ")
+        self.company_info["project_minimum"] = name.strip(", ")
 
     def get_liability_insurance(self):
         try:
@@ -157,7 +159,7 @@ class HomestarCompanyInfo:
         except:
             logging.warning(self.NF + "liability insurance")
             return
-        self.company_info["liability_insurance"] = liab_insurance.split(", ")
+        self.company_info["liability_insurance"] = liab_insurance.strip(", ")
 
     def get_number_of_employees(self):
         try:
@@ -167,7 +169,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "number of employees")
             return
 
-        self.company_info["number_of_employees"] = num_of_employees.split(", ")
+        self.company_info["number_of_employees"] = num_of_employees.strip(", ")
 
     def get_payment_methods(self):
         try:
@@ -177,7 +179,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "payment methods")
             return
 
-        self.company_info["payment_methods"] = payment_methods.split(", ")
+        self.company_info["payment_methods"] = payment_methods.strip(", ")
 
     def get_year_established(self):
         try:
@@ -187,7 +189,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "year established")
             return
 
-        self.company_info["year_established"] = year_established.split(", ")
+        self.company_info["year_established"] = year_established.strip(", ")
 
     def get_written_contract(self):
         try:
@@ -197,7 +199,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "written contract")
             return
 
-        self.company_info["written_contract"] = writtent_contract.split(", ")
+        self.company_info["written_contract"] = writtent_contract.strip(", ")
 
     def get_website_url(self):
         try:
@@ -206,7 +208,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "website url")
             return
 
-        self.company_info["website"] = website_url.split(", ")
+        self.company_info["website"] = website_url.strip(", ")
 
     def get_workers_compensation(self):
         try:
@@ -216,7 +218,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "website url")
             return
 
-        self.company_info["workers_compensation"] = comp.split(", ")
+        self.company_info["workers_compensation"] = comp.strip(", ")
 
     def get_licences(self):
         try:
@@ -225,23 +227,78 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "licenses")
             return
 
-        self.company_info["licenses"] = licenses.split(", ")
+        self.company_info["licenses"] = licenses.strip(", ")
+
+    def get_rating(self):
+        try:
+            rating = self.company_page.find_element_by_css_selector(".review-aggregate-rating__rating").text
+        except:
+            logging.warning(self.NF + "rating")
+            return
+
+        self.company_info["homestars_rating"] = rating.strip(", ")
 
     def get_phone(self):
-        #try:
-        phone_button = self.company_page.find_element_by_css_selector(".company-contact-buttons__button--phone")
-        phone_button.click()
-        phone_button = self.company_page.find_element_by_css_selector(".company-contact-buttons__button--phone")
-        phone = phone_button.text
-        #except:
-        #    logging.warning(self.NF + "phone number")
-        #    return
+        try:
+            phone_button = self.company_page.find_element_by_css_selector(".company-contact-buttons__button--phone")
+            phone_button.click()
+            phone_button = self.company_page.find_element_by_css_selector(".company-contact-buttons__phone-number")
+            phone = phone_button.text
+        except:
+            logging.warning(self.NF + "phone number")
+            return
 
-        self.company_info["phone"] = phone.split(", ")
+        self.company_info["phone"] = phone.strip(", ")
+
+    def get_location(self):
+        try:
+            location = self.company_page.find_element_by_css_selector(".service-area__map").get_attribute("src")
+        except:
+            logging.warning(self.NF + "location")
+            return
+
+        self.company_info["location"] = location.strip(", ")
+
+    def get_all_images(self):
+        try:
+            see_more = self.company_page.find_element_by_css_selector(".square-gallery__see-more").click()
+            photos_tags = self.company_page.find_elements_by_css_selector(".square-gallery__link")
+            for p in photos_tags:
+                self.company_info['shop_photos_links'].append(p.get_attribute("href"))
+            # go back to company main page
+            self.company_page.execute_script("window.history.go(-1)")
+        except:
+            try:
+                photos_tags = self.company_page.find_elements_by_css_selector(".square-gallery__link")
+                for p in photos_tags:
+                    self.company_info['shop_photos_links'].append(p.get_attribute("href"))
+            except:
+                logging.warning(self.NF + "photos")
 
     def extract_company(self):
+        self.get_address()
         self.get_phone()
-        pass
+        self.get_region()
+        self.get_categories()
+        self.get_contact_person_name()
+        self.get_postal()
+        self.get_bonded()
+        self.get_city()
+        self.get_company_name()
+        self.get_description()
+        self.get_liability_insurance()
+        self.get_licences()
+        self.get_number_of_employees()
+        self.get_waranty_terms()
+        self.get_payment_methods()
+        self.get_project_minimum()
+        self.get_project_rate()
+        self.get_website_url()
+        self.get_year_established()
+        self.get_workers_compensation()
+        self.get_written_contract()
+        self.get_location()
+        self.get_all_images()
         self.company_page.quit()
 
     def __del__(self):
