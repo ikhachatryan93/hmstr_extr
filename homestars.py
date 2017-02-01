@@ -17,7 +17,7 @@ homestars_url = "https://www.homestars.com/"
 
 def get_companies_urls(browser: webdriver, scroll_down=True):
     if scroll_down:
-        utilities.scroll_down(browser, next_page_css_selector, 1)
+        utilities.scroll_down(browser, next_page_css_selector, 2)
     soup = BeautifulSoup(browser.page_source, "html5lib")
     browser.close()
     companies_results = soup.findAll("section", {"class", HomestarCompanyInfo.COMPANY_RESULTS_CSS_CLASS})

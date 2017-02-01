@@ -49,3 +49,4 @@ Temporary Items
 *.xml
 ghostdriver.log
 *.png
+*.log

@@ -28,20 +28,19 @@ class HomestarCompanyInfo:
             address="", year_established="", number_of_employees="", payment_methods="", licenses="",
             workers_compensation="", is_bonded="", warranty_terms="", written_contract="",
             project_rate="", project_minimum="", liability_insurance="", website="", homestars_star_score="",
-            homestars_rating="", homestars_total_reviews="", homestars_reviews=[],
-            homestars_review_user_name="", homestars_review_date="",
-            homestars_review_location="", shop_photos_links=[], shop_profile_desc="")
+            homestars_rating="", homestars_total_reviews="", homestars_reviews=[], shop_photos_links=[], shop_profile_desc="")
 
         if "phantomjs" in browser_name:
-            self.company_page = utilities.setup_phantomjs_browser()
+            self.company_page = utilities.setup_phantomjs_browser(maximize=True)
         else:
-            self.company_page = utilities.setup_chrome_browser()
+            self.company_page = utilities.setup_chrome_browser(maximize=True)
 
         self.company_page.get(self.company_info["url_name"])
         self.company_page_source = BeautifulSoup(self.company_page.page_source, "html5lib")
         self.company_profile_details = self.company_page_source.find("div", {"class", "company-profile__details"})
         self.company_address_info = self.company_page_source.find("address", {"class": "company-header__address"})
         self.NF = "From {}: could not find ".format(self.company_info["url_name"])
+        self.wait = WebDriverWait(self.company_page, 10)
 
     def get_categories(self):
         try:
@@ -58,7 +57,8 @@ class HomestarCompanyInfo:
 
     def get_company_name(self):
         try:
-            company_name = self.company_page.find_element_by_css_selector(".company-header__name>h1").text
+            company_name = self.wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".company-header__name>h1"))).text
         except NoSuchElementException:
             logging.error(self.NF + "company name")
             return
@@ -238,6 +238,34 @@ class HomestarCompanyInfo:
 
         self.company_info["homestars_rating"] = rating.strip(", ")
 
+    def get_number_of_reviews(self):
+        try:
+            num_revs = self.company_page_source.find("span", {"class": "review-aggregate-rating__total"}).find(
+                "a").get_text()
+        except:
+            logging.warning(self.NF + "number of reviews")
+            return
+
+        self.company_info["homestars_total_reviews"] = num_revs
+
+    def get_company_logo(self):
+        try:
+            logo_url = self.company_page_source.find("div", {"class": "company-header__logo"}).find("img")["src"]
+        except:
+            logging.warning(self.NF + "company logo")
+            return
+
+        self.company_info["company_logo"] = logo_url
+
+    def get_star_score(self):
+        try:
+            num_revs = self.company_page_source.find("span", {"class": "star-score__score"}).get_text()
+        except:
+            logging.warning(self.NF + "star score")
+            return
+
+        self.company_info["homestars_star_score"] = num_revs
+
     def get_phone(self):
         try:
             phone_button = self.company_page.find_element_by_css_selector(".company-contact-buttons__button--phone")
@@ -259,12 +287,61 @@ class HomestarCompanyInfo:
 
         self.company_info["location"] = location.strip(", ")
 
+    def get_review_list(self, review_list):
+        for r in review_list:
+            try:
+                review = [{"review_date": r.find_element_by_css_selector(".review-content__date")},
+                          {"review_owner": r.find_element_by_css_selector(".review-author__name>a")},
+                          {"review_owner_location": r.find_element_by_css_selector(".review-author__location").text.strip("\nread less")}]
+                try:
+                    text = r.find_element_by_css_selector(".details").text.strip("\nread less")
+                except:
+                    text = r.find_element_by_css_selector(".expander.review-story__text>p").text.strip("\nread less")
+                review.append({"review_text": text})
+
+            except:
+                pass
+                self.company_info["homestars_reviews"].append(review)
+
+    def click_all_read_more_buttons(self):
+        try:
+            see_more_all = self.company_page.find_elements_by_css_selector(".more-link")
+        except:
+            return
+
+        for s in see_more_all:
+            try:
+                time.sleep(0.1)
+                self.company_page.execute_script("return arguments[0].scrollIntoView();", s)
+                self.company_page.execute_script("return arguments[0].click();", s)
+            except Exception as e:
+                print(str(s))
+
+    def get_all_reviews(self):
+        self.click_all_read_more_buttons()
+        try:
+            review_list = self.company_page.find_elements_by_css_selector(".review-wrap")
+            self.get_review_list(review_list)
+        except NoSuchElementException:
+            return
+
+        try:
+            np = self.company_page.find_element_by_css_selector(".next_page")
+        except NoSuchElementException:
+            return
+
+        while "disabled" not in np.get_attribute("class"):
+            np.click()
+            reviews = self.company_page.find_elements_by_css_selector(".review-wrap")
+            self.get_review_list(reviews)
+
     def get_all_images(self):
         try:
-            see_more = self.company_page.find_element_by_css_selector(".square-gallery__see-more").click()
+            self.company_page.find_element_by_css_selector(".square-gallery__see-more").click()
             photos_tags = self.company_page.find_elements_by_css_selector(".square-gallery__link")
             for p in photos_tags:
                 self.company_info['shop_photos_links'].append(p.get_attribute("href"))
+
             # go back to company main page
             self.company_page.execute_script("window.history.go(-1)")
         except:
@@ -276,6 +353,7 @@ class HomestarCompanyInfo:
                 logging.warning(self.NF + "photos")
 
     def extract_company(self):
+        self.get_company_name()
         self.get_address()
         self.get_phone()
         self.get_region()
@@ -284,7 +362,6 @@ class HomestarCompanyInfo:
         self.get_postal()
         self.get_bonded()
         self.get_city()
-        self.get_company_name()
         self.get_description()
         self.get_liability_insurance()
         self.get_licences()
@@ -298,6 +375,11 @@ class HomestarCompanyInfo:
         self.get_workers_compensation()
         self.get_written_contract()
         self.get_location()
+        self.get_number_of_reviews()
+        self.get_star_score()
+        self.get_rating()
+        self.get_company_logo()
+        self.get_all_reviews()
         self.get_all_images()
         self.company_page.quit()
 

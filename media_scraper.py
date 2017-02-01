@@ -13,7 +13,7 @@ def extract(url_query):
     browser.save_screenshot("start.png")
     extracted_services = homestars.extract_category(browser)
     #utilities.save_as_jquery(extracted_services)
-   # print(len(extracted_services))
+    #print(len(extracted_services))
 
 
 def main():

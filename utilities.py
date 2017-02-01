@@ -16,7 +16,7 @@ def setup_phantomjs_browser(maximize=False):
 
 
 def setup_chrome_browser(maximize=False):
-    chrome = webdriver.Chrome("chromedriver.exe")  # , chrome_options=chrome_options)
+    chrome = webdriver.Chrome()
     if maximize:
         chrome.maximize_window()
     return chrome
@@ -40,8 +40,6 @@ def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=100000000
         click_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         if "disabled" in click_element.get_attribute("class"):
             break
-        # print("asd")
-        driver.save_screenshot("asd.png")
 
 
 def open_url(url_query: str, driver: webdriver):
