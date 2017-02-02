@@ -1,23 +1,36 @@
 import time
-from bs4 import BeautifulSoup
-from urllib.request import urljoin
-from selenium import webdriver
-from queue import Queue
+import logging
 import threading
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from datetime import datetime
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from urllib.request import urljoin
+
 import utilities
 from company import HomestarCompanyInfo
 
-next_page_css_selector = ".next_page"
+logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+rootLogger = logging.getLogger()
+
+log_name = datetime.now().strftime('search_%H_%M_%d_%m_%Y.log')
+fileHandler = logging.FileHandler(filename=log_name)
+fileHandler.setFormatter(logFormatter)
+rootLogger.addHandler(fileHandler)
+
+# consoleHandler = logging.StreamHandler()
+# consoleHandler.setFormatter(logFormatter)
+# rootLogger.addHandler(consoleHandler)
+logging.basicConfig(level=logging.ERROR)
+
 homestars_url = "https://www.homestars.com/"
 
 
-def get_companies_urls(browser: webdriver, scroll_down=True):
-    if scroll_down:
-        utilities.scroll_down(browser, next_page_css_selector, 2)
+def get_companies_urls(browser, max_scroll_downs):
+    try:
+        utilities.scroll_down(browser, ".next_page", max_scroll_downs)
+    except Exception as e:
+        logging.ERROR("Could not get urls for: {}".format(str(e)))
+        return []
     soup = BeautifulSoup(browser.page_source, "html5lib")
     browser.close()
     companies_results = soup.findAll("section", {"class", HomestarCompanyInfo.COMPANY_RESULTS_CSS_CLASS})
@@ -28,26 +41,32 @@ def get_companies_urls(browser: webdriver, scroll_down=True):
     return urls
 
 
-def run_category_extraction(url, companies_infos):
-    company_info = HomestarCompanyInfo(urljoin(homestars_url, url))
-    c = company_info.extract_company()
-    companies_infos.append(c)
+def run_category_extraction(url, companies_infos, keyword):
+    try:
+        company_info = HomestarCompanyInfo(urljoin(homestars_url, url), keyword)
+        c = company_info.extract_company()
+        companies_infos.append(c)
+    except Exception as e:
+        logging.error("url : {}.  {}".format(url, str(e)))
 
 
-def extract_category(browser: webdriver, parallel=1):
-    companies_urls = get_companies_urls(browser)
+def extract_category(browser: webdriver, keyword, threads_num, max_scroll_downs):
+    logging.debug("Extracting {} keyword".format(keyword))
+    companies_urls = get_companies_urls(browser, max_scroll_downs)
     companies_infos = []
-    run_category_extraction(companies_urls[0], companies_infos)
-   # trds = []
-   # for url in companies_urls:
-   #     t = threading.Thread(target=run_category_extraction, args=(url, companies_infos))
-   #     t.daemon = True
-   #     t.start()
-   #     trds.append(t)
-   #     while threading.active_count() > parallel:
-   #         time.sleep(0.2)
+    #run_category_extraction(companies_urls[0], companies_infos, keyword)
+    trds = []
+    for url in companies_urls:
+        t = threading.Thread(target=run_category_extraction, args=(url, companies_infos, keyword))
+        t.daemon = True
+        t.start()
+        trds.append(t)
+        while threading.active_count() > threads_num:
+            time.sleep(0.2)
 
-   # for i in trds:
-   #     i.join()
+    for i in trds:
+       i.join(60*60)
+
+    logging.debug("Finished. keyword: {},  companies: {}".format(keyword, len(companies_urls)))
 
     return companies_infos

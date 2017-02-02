@@ -1,34 +1,56 @@
-import time
-import contextlib
-from bs4 import BeautifulSoup
-from urllib.request import urlopen
-from urllib.request import urljoin
-from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+from bs4 import BeautifulSoup
+from datetime import datetime
+import configparser
+import time
 import utilities
 import logging
 
+logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
+rootLogger = logging.getLogger()
+
+log_name = datetime.now().strftime('scraping_%H_%M_%d_%m_%Y.log')
+fileHandler = logging.FileHandler(filename=log_name)
+fileHandler.setFormatter(logFormatter)
+rootLogger.addHandler(fileHandler)
+logging.basicConfig(level=logging.ERROR)
+
 homestars_url = "https://www.homestars.com/"
+
+extract_reviews = True
+extract_images = True
+
+
+def parse_extraction_info_from_config_file():
+    config_parser = configparser.RawConfigParser()
+    config_file = r'./configs.txt'
+    config_parser.read(config_file)
+
+    global extract_reviews
+    global extract_images
+
+    extract_reviews = config_parser.getboolean('extraction_info', 'reviews')
+    extract_images = config_parser.getboolean('extraction_info', 'images')
 
 
 class HomestarCompanyInfo:
     COMPANY_RESULTS_CSS_CLASS = "company-result"
     COMPANY_URL_CSS_CLASS = "company-result__name"
     COMPANY_CATEGORY_CSS_CLASS = "company-result__categories"
-    logging.basicConfig(filename='scraping.log', level=logging.DEBUG)
 
-    def __init__(self, company_url, browser_name="chrome"):
+    def __init__(self, company_url, keyword, browser_name="chrome"):
         self.company_info = dict(
-            url_name=company_url, category_name="", keyword="",
+            url_name=company_url, category_name="", keyword=keyword,
             keyword_name="", shop_name="", shop_logo="", contact_person_name="",
-            phone="", country_name="", province="", city="", location="",
+            phone="", country_name="Canada", province="", city="", location="",
             address="", year_established="", number_of_employees="", payment_methods="", licenses="",
             workers_compensation="", is_bonded="", warranty_terms="", written_contract="",
             project_rate="", project_minimum="", liability_insurance="", website="", homestars_star_score="",
-            homestars_rating="", homestars_total_reviews="", homestars_reviews=[], shop_photos_links=[], shop_profile_desc="")
+            homestars_rating="", homestars_total_reviews="", homestars_reviews=[], shop_photos_links=[],
+            shop_profile_desc="")
 
         if "phantomjs" in browser_name:
             self.company_page = utilities.setup_phantomjs_browser(maximize=True)
@@ -40,7 +62,9 @@ class HomestarCompanyInfo:
         self.company_profile_details = self.company_page_source.find("div", {"class", "company-profile__details"})
         self.company_address_info = self.company_page_source.find("address", {"class": "company-header__address"})
         self.NF = "From {}: could not find ".format(self.company_info["url_name"])
-        self.wait = WebDriverWait(self.company_page, 10)
+        self.wait_5 = WebDriverWait(self.company_page, 5)
+        self.wait_2 = WebDriverWait(self.company_page, 2)
+        self.wait_1 = WebDriverWait(self.company_page, 2)
 
     def get_categories(self):
         try:
@@ -57,13 +81,13 @@ class HomestarCompanyInfo:
 
     def get_company_name(self):
         try:
-            company_name = self.wait.until(
+            company_name = self.wait_5.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".company-header__name>h1"))).text
         except NoSuchElementException:
             logging.error(self.NF + "company name")
             return
 
-        self.company_info["company_name"] = company_name.strip()
+        self.company_info["shop_name"] = company_name.strip()
 
     def get_contact_person_name(self):
         try:
@@ -94,7 +118,7 @@ class HomestarCompanyInfo:
     def get_address(self):
         address = self.company_address_info.find("spam", {"itemprop": "streetAddress"})
         if address is None:
-            logging.error(self.NF)
+            logging.error(self.NF + "address")
             return
 
         self.company_info["address"] = address.get_text().strip(", ")
@@ -255,7 +279,7 @@ class HomestarCompanyInfo:
             logging.warning(self.NF + "company logo")
             return
 
-        self.company_info["company_logo"] = logo_url
+        self.company_info["shop_logo"] = logo_url
 
     def get_star_score(self):
         try:
@@ -290,23 +314,33 @@ class HomestarCompanyInfo:
     def get_review_list(self, review_list):
         for r in review_list:
             try:
-                review = [{"review_date": r.find_element_by_css_selector(".review-content__date")},
-                          {"review_owner": r.find_element_by_css_selector(".review-author__name>a")},
-                          {"review_owner_location": r.find_element_by_css_selector(".review-author__location").text.strip("\nread less")}]
+                review = [{"review_date": r.find_element_by_css_selector(".review-content__date").text},
+                          {"review_owner": r.find_element_by_css_selector(".review-author__name>a").text},
+                          {"review_owner_location": r.find_element_by_css_selector(
+                              ".review-author__location").text.strip("\nread less")}]
                 try:
                     text = r.find_element_by_css_selector(".details").text.strip("\nread less")
                 except:
                     text = r.find_element_by_css_selector(".expander.review-story__text>p").text.strip("\nread less")
+
                 review.append({"review_text": text})
 
             except:
-                pass
-                self.company_info["homestars_reviews"].append(review)
+                continue
+            self.company_info["homestars_reviews"].append(review)
 
     def click_all_read_more_buttons(self):
+        time.sleep(0.2)
         try:
             see_more_all = self.company_page.find_elements_by_css_selector(".more-link")
-        except:
+        except NoSuchElementException:
+            logging.WARNING(
+                "For reviews, see_more elements are not found. url:{}".format(self.company_info["url_name"]))
+            return
+        except Exception as e:
+            logging.ERROR("Unknown fail while trying to get see_more elements. exception:{}. url:{}".format(str(e),
+                                                                                                            self.company_info[
+                                                                                                                "url_name"]))
             return
 
         for s in see_more_all:
@@ -315,30 +349,53 @@ class HomestarCompanyInfo:
                 self.company_page.execute_script("return arguments[0].scrollIntoView();", s)
                 self.company_page.execute_script("return arguments[0].click();", s)
             except Exception as e:
-                print(str(s))
+                logging.WARNING("Can not click on see_more elements for reviews: exception: {}".format(str(e)))
+
+    def get_current_reiew_list(self):
+        try:
+            review_list = self.company_page.find_elements_by_css_selector(".review-wrap")
+        except NoSuchElementException:
+            logging.DEBUG("Could not find reviews from {} url".format(self.company_info["url_name"]))
+            return
+
+        self.get_review_list(review_list)
+
+    def wait_page_load(self):
+        timeout = time.time() + 5
+        while 450 < self.company_page.execute_script("return window.scrollY"):
+            if timeout < time.time():
+                return
 
     def get_all_reviews(self):
         self.click_all_read_more_buttons()
+        self.get_current_reiew_list()
         try:
-            review_list = self.company_page.find_elements_by_css_selector(".review-wrap")
-            self.get_review_list(review_list)
+            next_page = self.company_page.find_element_by_css_selector(".next_page")
         except NoSuchElementException:
             return
 
-        try:
-            np = self.company_page.find_element_by_css_selector(".next_page")
-        except NoSuchElementException:
-            return
+        while "disabled" not in next_page.get_attribute("class"):
+            next_page.click()
+            self.wait_page_load()
+            self.click_all_read_more_buttons()
+            self.get_current_reiew_list()
+            try:
+                next_page = self.wait_2.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".next_page")))
+            except NoSuchElementException:
+                break
 
-        while "disabled" not in np.get_attribute("class"):
-            np.click()
-            reviews = self.company_page.find_elements_by_css_selector(".review-wrap")
-            self.get_review_list(reviews)
+        logging.debug("Finishing reviews extraction from {} page: ".format(self.company_info["url_name"]))
+        return
 
     def get_all_images(self):
         try:
-            self.company_page.find_element_by_css_selector(".square-gallery__see-more").click()
-            photos_tags = self.company_page.find_elements_by_css_selector(".square-gallery__link")
+            see_more = self.wait_1.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".square-gallery__see-more")))
+            self.company_page.execute_script("return arguments[0].scrollIntoView();", see_more)
+            see_more = self.wait_5.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".square-gallery__see-more")))
+            self.company_page.execute_script("return arguments[0].click();", see_more)
+            time.sleep(2)
+            photos_tags = self.wait_5.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".square"
+                                                                                                  "-gallery__link")))
             for p in photos_tags:
                 self.company_info['shop_photos_links'].append(p.get_attribute("href"))
 
@@ -347,47 +404,49 @@ class HomestarCompanyInfo:
         except:
             try:
                 photos_tags = self.company_page.find_elements_by_css_selector(".square-gallery__link")
+                self.company_page.execute_script("return arguments[0].scrollIntoView();", photos_tags[0])
                 for p in photos_tags:
                     self.company_info['shop_photos_links'].append(p.get_attribute("href"))
             except:
                 logging.warning(self.NF + "photos")
 
     def extract_company(self):
-        self.get_company_name()
-        self.get_address()
-        self.get_phone()
-        self.get_region()
-        self.get_categories()
-        self.get_contact_person_name()
-        self.get_postal()
-        self.get_bonded()
-        self.get_city()
-        self.get_description()
-        self.get_liability_insurance()
-        self.get_licences()
-        self.get_number_of_employees()
-        self.get_waranty_terms()
-        self.get_payment_methods()
-        self.get_project_minimum()
-        self.get_project_rate()
-        self.get_website_url()
-        self.get_year_established()
-        self.get_workers_compensation()
-        self.get_written_contract()
-        self.get_location()
-        self.get_number_of_reviews()
-        self.get_star_score()
-        self.get_rating()
-        self.get_company_logo()
-        self.get_all_reviews()
-        self.get_all_images()
+        try:
+            parse_extraction_info_from_config_file()
+            self.get_company_name()
+            self.get_address()
+            self.get_phone()
+            self.get_region()
+            self.get_categories()
+            self.get_contact_person_name()
+            self.get_postal()
+            self.get_bonded()
+            self.get_city()
+            self.get_description()
+            self.get_liability_insurance()
+            self.get_licences()
+            self.get_number_of_employees()
+            self.get_waranty_terms()
+            self.get_payment_methods()
+            self.get_project_minimum()
+            self.get_project_rate()
+            self.get_website_url()
+            self.get_year_established()
+            self.get_workers_compensation()
+            self.get_written_contract()
+            self.get_location()
+            self.get_number_of_reviews()
+            self.get_star_score()
+            self.get_rating()
+            self.get_company_logo()
+            if extract_images:
+                self.get_all_images()
+            if extract_reviews:
+                self.get_all_reviews()
+        except Exception as e:
+            logging.CRITICAL(
+                "Exception while extracting {} company. exception: ".format(self.company_info["url_name"], str(e)))
         self.company_page.quit()
 
     def __del__(self):
         pass
-
-        ## get company name
-        # self.company_info["shop_name"] = self.get_company_name()
-
-        ## get category of the company
-        # self.company_info["category_name"] = self.get_categories()

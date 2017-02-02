@@ -1,0 +1,20 @@
+[search_info]
+locations = Calgary, Ottawa, Edmonton, Montreal, Québec, Winnipeg, Hamilton, Kitchener, Saint Catharines
+keywords = carpet, floor
+company_name_match = False
+category_name_match = True
+max_category_scroll_downs = 1
+
+
+[extraction_info]
+# Extraction of reviews is slow down the speed
+# Anyway you can enable it
+reviews = True
+images = False
+
+
+
+[parameters]
+threads = 2
+
+

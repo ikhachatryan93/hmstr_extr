@@ -15,7 +15,7 @@ def setup_phantomjs_browser(maximize=False):
     return phantomjs
 
 
-def setup_chrome_browser(maximize=False):
+def setup_chrome_browser(maximize=True):
     chrome = webdriver.Chrome()
     if maximize:
         chrome.maximize_window()
@@ -31,15 +31,28 @@ def write_urls_to_file(name, urls):
                 print(str(e))
 
 
-def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=1000000000):
+def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=1000):
     wait = WebDriverWait(driver, 10)
     for _ in range(max_scroll_downs):
-        wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
+        try:
+            wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
+        except TimeoutException:
+            return
+        except OSError:
+            print("scroll down error")
+            time.sleep(2)
+            continue
         driver.execute_script("window.scrollTo(0, 0)")
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        click_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
-        if "disabled" in click_element.get_attribute("class"):
-            break
+        try:
+            click_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
+        except TimeoutException:
+            return
+        try:
+            if "disabled" in click_element.get_attribute("class"):
+                break
+        except:
+            continue
 
 
 def open_url(url_query: str, driver: webdriver):
