@@ -43,13 +43,36 @@ class HomestarCompanyInfo:
 
     def __init__(self, company_url, keyword, browser_name="chrome"):
         self.company_info = dict(
-            url_name=company_url, category_name="", keyword=keyword,
-            keyword_name="", shop_name="", shop_logo="", contact_person_name="",
-            phone="", country_name="Canada", province="", city="", location="",
-            address="", year_established="", number_of_employees="", payment_methods="", licenses="",
-            workers_compensation="", is_bonded="", warranty_terms="", written_contract="",
-            project_rate="", project_minimum="", liability_insurance="", website="", homestars_star_score="",
-            homestars_rating="", homestars_total_reviews="", homestars_reviews=[], shop_photos_links=[],
+            url_name=company_url,
+            keyword=keyword,
+            shop_name="",
+            category_name="",
+            shop_logo="",
+            contact_person_name="",
+            country_name="Canada",
+            province="",
+            city="",
+            location="",
+            address="",
+            phone="",
+            year_established="",
+            number_of_employees="",
+            payment_methods="",
+            licenses="",
+            workers_compensation="",
+            is_bonded="",
+            warranty_terms="",
+            written_contract="",
+            project_rate="",
+            project_minimum="",
+            liability_insurance="",
+            website="",
+            homestars_star_score="",
+            homestars_rating="",
+            homestars_total_reviews="",
+            postal_code="",
+            homestars_reviews=[],
+            shop_photos_links=[],
             shop_profile_desc="")
 
         if "phantomjs" in browser_name:
@@ -101,7 +124,7 @@ class HomestarCompanyInfo:
     def get_region(self):
         province = self.company_address_info.find("span", {"itemprop": "addressRegion"})
         if province is None:
-            logging.error(self.NF + "region")
+            logging.warning(self.NF + "region")
             return
 
         self.company_info["province"] = province.get_text().strip(", ")
@@ -110,7 +133,7 @@ class HomestarCompanyInfo:
         try:
             city = self.company_page.find_element_by_css_selector(".city-name").text
         except NoSuchElementException:
-            logging.error(self.NF + "city")
+            logging.warning(self.NF + "city")
             return
 
         self.company_info["city"] = city.strip()
@@ -118,7 +141,7 @@ class HomestarCompanyInfo:
     def get_address(self):
         address = self.company_address_info.find("spam", {"itemprop": "streetAddress"})
         if address is None:
-            logging.error(self.NF + "address")
+            logging.warning(self.NF + "address")
             return
 
         self.company_info["address"] = address.get_text().strip(", ")
@@ -126,7 +149,7 @@ class HomestarCompanyInfo:
     def get_postal(self):
         postal = self.company_address_info.find("span", {"itemprop": "postalCode"})
         if postal is None:
-            logging.error(self.NF + "postal code")
+            logging.warning(self.NF + "postal code")
             return
 
         self.company_info["postal_code"] = postal.get_text().strip(", ")
@@ -311,24 +334,6 @@ class HomestarCompanyInfo:
 
         self.company_info["location"] = location.strip(", ")
 
-    def get_review_list(self, review_list):
-        for r in review_list:
-            try:
-                review = [{"review_date": r.find_element_by_css_selector(".review-content__date").text},
-                          {"review_owner": r.find_element_by_css_selector(".review-author__name>a").text},
-                          {"review_owner_location": r.find_element_by_css_selector(
-                              ".review-author__location").text.strip("\nread less")}]
-                try:
-                    text = r.find_element_by_css_selector(".details").text.strip("\nread less")
-                except:
-                    text = r.find_element_by_css_selector(".expander.review-story__text>p").text.strip("\nread less")
-
-                review.append({"review_text": text})
-
-            except:
-                continue
-            self.company_info["homestars_reviews"].append(review)
-
     def click_all_read_more_buttons(self):
         time.sleep(0.2)
         try:
@@ -338,9 +343,8 @@ class HomestarCompanyInfo:
                 "For reviews, see_more elements are not found. url:{}".format(self.company_info["url_name"]))
             return
         except Exception as e:
-            logging.ERROR("Unknown fail while trying to get see_more elements. exception:{}. url:{}".format(str(e),
-                                                                                                            self.company_info[
-                                                                                                                "url_name"]))
+            error_msg = "Unknown fail while trying to get see_more elements. exception:{}. url:{}"
+            logging.ERROR(error_msg.format(str(e), self.company_info["url_name"]))
             return
 
         for s in see_more_all:
@@ -351,37 +355,70 @@ class HomestarCompanyInfo:
             except Exception as e:
                 logging.WARNING("Can not click on see_more elements for reviews: exception: {}".format(str(e)))
 
+    def get_review_list(self, review_list):
+        for r in review_list:
+            try:
+                review = [{"review_date": r.find_element_by_css_selector(".review-content__date").text},
+                          {"review_owner": r.find_element_by_css_selector(".review-author__name>a").text},
+                          {"review_owner_location": r.find_element_by_css_selector(
+                              ".review-author__location").text.strip("\nread less")}]
+            except Exception as e:
+                print("Exception in get_review_list" + str(e))
+                continue
+
+            try:
+                text = r.find_element_by_css_selector(".details").text.strip("\nread less")
+            except NoSuchElementException:
+                try:
+                    text = r.find_element_by_css_selector(".expander.review-story__text>p").text.strip("\nread less")
+                except NoSuchElementException:
+                    continue
+
+            review.append({"review_text": text})
+            self.company_info["homestars_reviews"].append(review)
+
     def get_current_reiew_list(self):
         try:
             review_list = self.company_page.find_elements_by_css_selector(".review-wrap")
         except NoSuchElementException:
-            logging.DEBUG("Could not find reviews from {} url".format(self.company_info["url_name"]))
+            logging.DEBUG('Could not find reviews from {} url'.format(self.company_info["url_name"]))
             return
 
         self.get_review_list(review_list)
 
     def wait_page_load(self):
         timeout = time.time() + 5
-        while 450 < self.company_page.execute_script("return window.scrollY"):
+        while 600 < self.company_page.execute_script("return window.scrollY"):
+            time.sleep(0.1)
             if timeout < time.time():
+                print(self.company_page.execute_script("return window.scrollY"))
                 return
 
     def get_all_reviews(self):
         self.click_all_read_more_buttons()
         self.get_current_reiew_list()
         try:
-            next_page = self.company_page.find_element_by_css_selector(".next_page")
+            self.company_page.find_element_by_css_selector(".next_page")
         except NoSuchElementException:
             return
 
+        try:
+            next_page = self.wait_5.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".next_page")))
+        except TimeoutError:
+            return
+
         while "disabled" not in next_page.get_attribute("class"):
-            next_page.click()
+            try:
+                next_page.click()
+            except:
+                pass
             self.wait_page_load()
             self.click_all_read_more_buttons()
             self.get_current_reiew_list()
             try:
-                next_page = self.wait_2.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".next_page")))
-            except NoSuchElementException:
+                next_page = self.wait_2.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".next_page")))
+            except TimeoutError or NoSuchElementException:
+                print("In get_all_reviews, element is not clickable")
                 break
 
         logging.debug("Finishing reviews extraction from {} page: ".format(self.company_info["url_name"]))
@@ -389,11 +426,13 @@ class HomestarCompanyInfo:
 
     def get_all_images(self):
         try:
+            old_url = self.company_page.current_url
             see_more = self.wait_1.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".square-gallery__see-more")))
             self.company_page.execute_script("return arguments[0].scrollIntoView();", see_more)
             see_more = self.wait_5.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".square-gallery__see-more")))
             self.company_page.execute_script("return arguments[0].click();", see_more)
-            time.sleep(2)
+            while old_url in self.company_page.current_url:
+                time.sleep(0.1)
             photos_tags = self.wait_5.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".square"
                                                                                                   "-gallery__link")))
             for p in photos_tags:
@@ -444,9 +483,5 @@ class HomestarCompanyInfo:
             if extract_reviews:
                 self.get_all_reviews()
         except Exception as e:
-            logging.CRITICAL(
-                "Exception while extracting {} company. exception: ".format(self.company_info["url_name"], str(e)))
+            logging.CRITICAL("Exception while extracting {} company. ".format(self.company_info["url_name"], str(e)))
         self.company_page.quit()
-
-    def __del__(self):
-        pass

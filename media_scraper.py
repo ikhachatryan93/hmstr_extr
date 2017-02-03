@@ -36,8 +36,8 @@ def parse_config_file():
     search_keywords_list = config_parser.get('search_info', 'keywords')
     search_locations_list = config_parser.get('search_info', 'locations')
 
-    search_by_category_name_match = config_parser.getboolean('search_info', 'category_name_match')
-    search_by_company_name_match = config_parser.getboolean('search_info', 'company_name_match')
+    search_by_category_name_match = config_parser.getboolean('search_info', 'search_by_category_name')
+    search_by_company_name_match = config_parser.getboolean('search_info', 'search_by_company_name')
     max_category_scroll_downs = config_parser.getint('search_info', 'max_category_scroll_downs')
 
     threads = config_parser.getint('parameters', 'threads')
@@ -79,25 +79,28 @@ def extract(location, keyword, search_type="company_name"):
     # browser= utilities.setup_phantomjs_browser(maximize=True)
     browser = utilities.setup_chrome_browser(maximize=True)
     search_keyword_in_location(keyword, location, browser, search_type)
-    extracted_services = homestars.extract_category(browser, keyword, threads, max_category_scroll_downs)
+    homestars.extract_category(browser, keyword, threads, max_category_scroll_downs)
 
     # utilities.save_as_jquery(extracted_services)
 
 
 def main():
     parse_config_file()
-    for keyword in search_keywords_list.split(","):
 
-        # search results for company name mach have not location,
-        # the results are for all country
-        # so we can just search the keyword without location
-        if search_by_company_name_match:
-            extract("", keyword, "company_name")
+    with open('data.json', 'w') as outfile:
+        for keyword in search_keywords_list.split(","):
 
-        # for search by category action a location is required.
-        if search_by_category_name_match:
-            for location in search_locations_list.split(","):
-                extract(location, keyword, "category_name")
+            # search results for company name mach have not location,
+            # the results are for all country
+            # so we can just search the keyword without location
+            if search_by_company_name_match:
+                extract("", keyword, "company_name")
+
+            # for search by category action a location is required.
+            if search_by_category_name_match:
+                for location in search_locations_list.split(","):
+                    extract(location.strip(), keyword.strip(), "category_name")
+                    exit()
 
 
 if __name__ == "__main__":
