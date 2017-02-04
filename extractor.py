@@ -78,13 +78,10 @@ def search_keyword_in_location(keyword, location, browser, search_type="category
 
 
 def extract(location, keyword, search_type="company_name"):
-    # browser= utilities.setup_phantomjs_browser(maximize=True)
     browser = utilities.setup_chrome_browser(maximize=True)
     search_keyword_in_location(keyword, location, browser, search_type)
     data = homestars.extract_category(browser, keyword, threads, max_category_scroll_downs)
     return data
-
-    # utilities.save_as_jquery(extracted_services)
 
 
 def main():
