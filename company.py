@@ -43,37 +43,16 @@ class HomestarCompanyInfo:
 
     def __init__(self, company_url, keyword, browser_name="chrome"):
         self.company_info = dict(
-            url_name=company_url,
-            keyword=keyword,
-            shop_name="",
-            category_name="",
-            shop_logo="",
-            contact_person_name="",
-            country_name="Canada",
-            province="",
-            city="",
-            location="",
-            address="",
-            phone="",
-            year_established="",
-            number_of_employees="",
-            payment_methods="",
-            licenses="",
-            workers_compensation="",
-            is_bonded="",
-            warranty_terms="",
-            written_contract="",
-            project_rate="",
-            project_minimum="",
-            liability_insurance="",
-            website="",
-            homestars_star_score="",
-            homestars_rating="",
-            homestars_total_reviews="",
-            postal_code="",
-            homestars_reviews=[],
-            shop_photos_links=[],
-            shop_profile_desc="")
+            url_name=company_url, keyword=keyword, shop_name="",
+            category_name="", shop_logo="", contact_person_name="",
+            country_name="Canada", province="", city="",
+            location="", address="", phone="", year_established="",
+            number_of_employees="", payment_methods="", licenses="",
+            workers_compensation="", is_bonded="", warranty_terms="",
+            written_contract="", project_rate="", project_minimum="",
+            liability_insurance="", website="", homestars_star_score="",
+            homestars_rating="", homestars_total_reviews="", postal_code="",
+            homestars_reviews=[], shop_photos_links=[], shop_profile_desc="")
 
         if "phantomjs" in browser_name:
             self.company_page = utilities.setup_phantomjs_browser(maximize=True)
@@ -87,7 +66,7 @@ class HomestarCompanyInfo:
         self.NF = "From {}: could not find ".format(self.company_info["url_name"])
         self.wait_5 = WebDriverWait(self.company_page, 5)
         self.wait_2 = WebDriverWait(self.company_page, 2)
-        self.wait_1 = WebDriverWait(self.company_page, 2)
+        self.wait_1 = WebDriverWait(self.company_page, 1)
 
     def get_categories(self):
         try:
@@ -344,7 +323,7 @@ class HomestarCompanyInfo:
             return
         except Exception as e:
             error_msg = "Unknown fail while trying to get see_more elements. exception:{}. url:{}"
-            logging.ERROR(error_msg.format(str(e), self.company_info["url_name"]))
+            logging.error(error_msg.format(str(e), self.company_info["url_name"]))
             return
 
         for s in see_more_all:
@@ -358,37 +337,43 @@ class HomestarCompanyInfo:
     def get_review_list(self, review_list):
         for r in review_list:
             try:
-                review = [{"review_date": r.find_element_by_css_selector(".review-content__date").text},
-                          {"review_owner": r.find_element_by_css_selector(".review-author__name>a").text},
-                          {"review_owner_location": r.find_element_by_css_selector(
-                              ".review-author__location").text.strip("\nread less")}]
+                review = {"review_date": r.find_element_by_css_selector(".review-content__date").text,
+                          "review_owner": r.find_element_by_css_selector(".review-author__name>a").text,
+                          "review_owner_location": r.find_element_by_css_selector(
+                              ".review-author__location").text.strip("\nread less")}
             except Exception as e:
                 print("Exception in get_review_list" + str(e))
                 continue
 
             try:
-                text = r.find_element_by_css_selector(".details").text.strip("\nread less")
+                review_text = r.find_element_by_css_selector(".details").text.strip("\nread less")
             except NoSuchElementException:
                 try:
-                    text = r.find_element_by_css_selector(".expander.review-story__text>p").text.strip("\nread less")
+                    review_text = r.find_element_by_css_selector(".expander.review-story__text>p").text.strip("\nread less")
                 except NoSuchElementException:
+                    self.company_info["homestars_reviews"].append(review)
                     continue
+            try:
+                response_text = r.find_element_by_css_selector(".review-response__body").text
+            except:
+                response_text = ""
 
-            review.append({"review_text": text})
+            review["review_text"] = review_text
+            review["response_text"] = response_text
             self.company_info["homestars_reviews"].append(review)
 
     def get_current_reiew_list(self):
         try:
             review_list = self.company_page.find_elements_by_css_selector(".review-wrap")
         except NoSuchElementException:
-            logging.DEBUG('Could not find reviews from {} url'.format(self.company_info["url_name"]))
+            logging.debug('Could not find reviews from {} url'.format(self.company_info["url_name"]))
             return
 
         self.get_review_list(review_list)
 
     def wait_page_load(self):
         timeout = time.time() + 5
-        while 600 < self.company_page.execute_script("return window.scrollY"):
+        while 653 < self.company_page.execute_script("return window.scrollY"):
             time.sleep(0.1)
             if timeout < time.time():
                 print(self.company_page.execute_script("return window.scrollY"))
@@ -408,15 +393,13 @@ class HomestarCompanyInfo:
             return
 
         while "disabled" not in next_page.get_attribute("class"):
-            try:
-                next_page.click()
-            except:
-                pass
+            self.company_page.execute_script("return arguments[0].scrollIntoView(false);", next_page)
+            next_page.click()
             self.wait_page_load()
             self.click_all_read_more_buttons()
             self.get_current_reiew_list()
             try:
-                next_page = self.wait_2.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".next_page")))
+                next_page = self.wait_2.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".next_page")))
             except TimeoutError or NoSuchElementException:
                 print("In get_all_reviews, element is not clickable")
                 break
@@ -427,8 +410,9 @@ class HomestarCompanyInfo:
     def get_all_images(self):
         try:
             old_url = self.company_page.current_url
-            see_more = self.wait_1.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".square-gallery__see-more")))
-            self.company_page.execute_script("return arguments[0].scrollIntoView();", see_more)
+            see_more = self.wait_1.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, ".square-gallery__see"
+                                                                                               "-more")))
+            self.company_page.execute_script("return arguments[0].scrollIntoView();", see_more[len(see_more) - 1])
             see_more = self.wait_5.until(EC.visibility_of_element_located((By.CSS_SELECTOR, ".square-gallery__see-more")))
             self.company_page.execute_script("return arguments[0].click();", see_more)
             while old_url in self.company_page.current_url:

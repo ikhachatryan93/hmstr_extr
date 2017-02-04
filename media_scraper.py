@@ -2,6 +2,7 @@
 import utilities
 import homestars
 import configparser
+import json
 import time
 
 from selenium.webdriver.support.ui import WebDriverWait
@@ -71,6 +72,7 @@ def search_keyword_in_location(keyword, location, browser, search_type="category
         except TimeoutException:
             return
         company_name_match_button.click()
+        time.sleep(10)
 
     browser.save_screenshot("start.png")
 
@@ -79,7 +81,8 @@ def extract(location, keyword, search_type="company_name"):
     # browser= utilities.setup_phantomjs_browser(maximize=True)
     browser = utilities.setup_chrome_browser(maximize=True)
     search_keyword_in_location(keyword, location, browser, search_type)
-    homestars.extract_category(browser, keyword, threads, max_category_scroll_downs)
+    data = homestars.extract_category(browser, keyword, threads, max_category_scroll_downs)
+    return data
 
     # utilities.save_as_jquery(extracted_services)
 
@@ -87,20 +90,20 @@ def extract(location, keyword, search_type="company_name"):
 def main():
     parse_config_file()
 
-    with open('data.json', 'w') as outfile:
-        for keyword in search_keywords_list.split(","):
+    for keyword in search_keywords_list.split(","):
 
-            # search results for company name mach have not location,
-            # the results are for all country
-            # so we can just search the keyword without location
-            if search_by_company_name_match:
-                extract("", keyword, "company_name")
+        # search results for company name mach have not location,
+        # the results are for all country
+        # so we can just search the keyword without location
+        if search_by_company_name_match:
+            data = extract("Toronto", keyword.strip(), "company_name")
+            utilities.write_json_file(name="{}_{}.json".format("cmpn_name_search", keyword.strip()), data=data)
 
             # for search by category action a location is required.
-            if search_by_category_name_match:
-                for location in search_locations_list.split(","):
-                    extract(location.strip(), keyword.strip(), "category_name")
-                    exit()
+        if search_by_category_name_match:
+            for location in search_locations_list.split(","):
+                data = extract(location.strip(), keyword.strip(), "category_name")
+                utilities.write_json_file(name="{}_{}.json".format(location.strip(), keyword.strip()), data=data)
 
 
 if __name__ == "__main__":

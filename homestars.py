@@ -16,7 +16,7 @@ def get_companies_urls(browser, max_scroll_downs):
     try:
         utilities.scroll_down(browser, ".next_page", max_scroll_downs)
     except Exception as e:
-        logging.ERROR("Could not get urls for: {}".format(str(e)))
+        logging.error("Could not get urls for: {}".format(str(e)))
         return []
     soup = BeautifulSoup(browser.page_source, "html5lib")
     browser.close()
@@ -41,7 +41,6 @@ def extract_category(browser: webdriver, keyword, threads_num, max_scroll_downs)
     companies_urls = get_companies_urls(browser, max_scroll_downs)
     companies_infos = []
     # run_category_extraction(companies_urls[0], companies_infos, keyword)
-    # run_category_extraction(companies_urls[1], companies_infos, keyword)
     trds = []
     for url in companies_urls:
         t = threading.Thread(target=run_category_extraction, args=(url, companies_infos, keyword))
@@ -53,9 +52,5 @@ def extract_category(browser: webdriver, keyword, threads_num, max_scroll_downs)
 
     for i in trds:
         i.join(600)
-
-    logging.debug("Finished. keyword: {},  companies: {}".format(keyword, len(companies_infos)))
-    outfile = open('data.json', 'w+')
-    for data in companies_infos:
-        json.dump(data, outfile)
-    outfile.close()
+    logging.info("Finished. keyword: {},  companies: {}".format(keyword, len(companies_infos)))
+    return companies_infos

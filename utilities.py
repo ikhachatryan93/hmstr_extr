@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import time
+import json
 
 
 def setup_phantomjs_browser(maximize=False):
@@ -29,6 +30,11 @@ def write_urls_to_file(name, urls):
                 f.write(url + '\n')
             except Exception as e:
                 print(str(e))
+
+
+def write_json_file(name, data):
+    with open(name, 'w') as fname:
+        json.dump(data, fname)
 
 
 def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=1000):
