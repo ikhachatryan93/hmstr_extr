@@ -1,9 +1,9 @@
 [search_info]
 locations = Calgary, Ottawa, Edmonton, Montreal, Winnipeg, Hamilton, Kitchener, Saint Catharines
-keywords = carpet, floor
-search_by_company_name = no
+keywords = floor, carpet
+search_by_company_name = yes
 search_by_category_name = yes
-max_category_scroll_downs = 0
+max_category_scroll_downs = 5000
 
 [extraction_info]
 # Extraction of reviews slows down the speed
@@ -12,6 +12,6 @@ reviews = yes
 images = yes
 
 [parameters]
-threads = 1
+threads = 10
 
 

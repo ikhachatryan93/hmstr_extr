@@ -5,6 +5,7 @@ import threading
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from urllib.request import urljoin
+import os.path
 
 import utilities
 from company import HomestarCompanyInfo
@@ -36,8 +37,15 @@ def run_category_extraction(url, companies_infos, keyword):
         logging.error("url : {}.  {}".format(url, str(e)))
 
 
-def extract_category(browser: webdriver, keyword, threads_num, max_scroll_downs):
-    companies_urls = get_companies_urls(browser, max_scroll_downs)
+def extract_category(browser: webdriver, keyword, location, threads_num, max_scroll_downs):
+    url_file_name = "{}_{}_urls.txt".format(location, keyword)
+
+    if os.path.isfile(url_file_name):
+        companies_urls = utilities.read_urls_from_file(url_file_name)
+    else:
+        companies_urls = get_companies_urls(browser, max_scroll_downs)
+        utilities.write_urls_to_file("{}_{}_urls.txt".format(location, keyword), companies_urls)
+
     companies_infos = []
     # run_category_extraction(companies_urls[0], companies_infos, keyword)
     trds = []

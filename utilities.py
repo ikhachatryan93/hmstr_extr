@@ -22,6 +22,12 @@ def setup_chrome_browser(maximize=True):
         chrome.maximize_window()
     return chrome
 
+def read_urls_from_file(name):
+    urls = []
+    with open(name, encoding='utf-8') as f:
+        urls = f.read().splitlines() 
+    assert(len(urls) > 0)
+    return urls
 
 def write_urls_to_file(name, urls):
     with open(name, 'w', encoding='utf-8') as f:

@@ -372,11 +372,10 @@ class HomestarCompanyInfo:
         self.get_review_list(review_list)
 
     def wait_page_load(self):
-        timeout = time.time() + 5
-        while 653 < self.company_page.execute_script("return window.scrollY"):
+        timeout = time.time() + 4
+        while 800 < self.company_page.execute_script("return window.scrollY"):
             time.sleep(0.1)
             if timeout < time.time():
-                print(self.company_page.execute_script("return window.scrollY"))
                 return
 
     def get_all_reviews(self):

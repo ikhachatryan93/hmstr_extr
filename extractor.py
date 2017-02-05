@@ -85,7 +85,9 @@ def search_keyword_in_location(keyword, location, browser, search_type="category
 def extract(location, keyword, search_type="company_name"):
     browser = utilities.setup_chrome_browser(maximize=True)
     search_keyword_in_location(keyword, location, browser, search_type)
-    data = homestars.extract_category(browser, keyword, threads, max_category_scroll_downs)
+    if "company_name" in search_type:
+        location = ""
+    data = homestars.extract_category(browser, keyword, location, threads, max_category_scroll_downs)
     return data
 
 
