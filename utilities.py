@@ -17,7 +17,7 @@ def setup_phantomjs_browser(maximize=False):
 
 
 def setup_chrome_browser(maximize=True):
-    chrome = webdriver.Chrome()
+    chrome = webdriver.Chrome("chromedriver")
     if maximize:
         chrome.maximize_window()
     return chrome

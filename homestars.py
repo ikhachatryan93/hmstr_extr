@@ -11,7 +11,6 @@ from company import HomestarCompanyInfo
 
 homestars_url = "https://www.homestars.com/"
 
-
 def get_companies_urls(browser, max_scroll_downs):
     try:
         utilities.scroll_down(browser, ".next_page", max_scroll_downs)

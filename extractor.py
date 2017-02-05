@@ -9,6 +9,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from pyvirtualdisplay import Display
+
+display = Display(visible=0, size=(1920, 1080))
+display.start()
 
 homestars_url = "https://www.homestars.com/"
 
@@ -61,6 +65,7 @@ def search_keyword_in_location(keyword, location, browser, search_type="category
     time.sleep(3)
 
     # search
+    browser.save_screenshot("asd")
     search_button = browser.find_element_by_css_selector(".hero-search__button")
     search_button.click()
 
