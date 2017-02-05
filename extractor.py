@@ -53,13 +53,19 @@ def search_keyword_in_location(keyword, location, browser, search_type="category
 
     # input keyword
     keyword_input = browser.find_element_by_css_selector("#hero_keyword_search")
+    time.sleep(0.2)
     keyword_input.clear()
+    time.sleep(0.2)
     keyword_input.send_keys(keyword)
+    time.sleep(0.2)
 
     # input location
     location_input = browser.find_element_by_css_selector("#hero_location_search")
+    time.sleep(0.2)
     location_input.clear()
+    time.sleep(0.2)
     location_input.send_keys(location)
+    time.sleep(0.2)
 
     # needed to get correct search results
     time.sleep(3)

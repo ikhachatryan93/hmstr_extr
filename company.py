@@ -16,7 +16,7 @@ log_name = datetime.now().strftime('scraping_%H_%M_%d_%m_%Y.log')
 fileHandler = logging.FileHandler(filename=log_name)
 fileHandler.setFormatter(logFormatter)
 rootLogger.addHandler(fileHandler)
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.DEBUG)
 
 homestars_url = "https://www.homestars.com/"
 
@@ -60,6 +60,7 @@ class HomestarCompanyInfo:
             self.company_page = utilities.setup_chrome_browser(maximize=True)
 
         self.company_page.get(self.company_info["url_name"])
+        self.company_page.save_screenshot(self.company_info["url_name"] + ".png")
         self.company_page_source = BeautifulSoup(self.company_page.page_source, "html5lib")
         self.company_profile_details = self.company_page_source.find("div", {"class", "company-profile__details"})
         self.company_address_info = self.company_page_source.find("address", {"class": "company-header__address"})
@@ -466,5 +467,5 @@ class HomestarCompanyInfo:
             if extract_reviews:
                 self.get_all_reviews()
         except Exception as e:
-            logging.CRITICAL("Exception while extracting {} company. ".format(self.company_info["url_name"], str(e)))
+            logging.critical("Exception while extracting {} company. {}".format(self.company_info["url_name"], str(e)))
         self.company_page.quit()

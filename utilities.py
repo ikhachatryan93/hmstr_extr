@@ -37,19 +37,19 @@ def write_urls_to_file(name, urls):
             except Exception as e:
                 print(str(e))
 
-
 def write_json_file(name, data):
     with open(name, 'w') as fname:
         json.dump(data, fname)
 
 
-def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=1000):
+# return false if scrolldowns ended
+def scroll_down(driver, css_selector, max_scroll_downs):
     wait = WebDriverWait(driver, 10)
     for _ in range(max_scroll_downs):
         try:
             wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
         except TimeoutException:
-            return
+            return False
         except OSError:
             print("scroll down error")
             time.sleep(2)
@@ -59,12 +59,14 @@ def scroll_down(driver: webdriver, css_selector: str, max_scroll_downs=1000):
         try:
             click_element = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, css_selector)))
         except TimeoutException:
-            return
+            return False
         try:
             if "disabled" in click_element.get_attribute("class"):
-                break
+                return False
         except:
             continue
+
+    return True
 
 
 def open_url(url_query: str, driver: webdriver):
