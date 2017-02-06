@@ -37,6 +37,8 @@ def run_category_extraction(url, companies_infos, keyword):
         company.extract_company()
         companies_infos.append(company.company_info)
     except Exception as e:
+        time.sleep(3)
+        company = HomestarCompanyInfo(urljoin(homestars_url, url), keyword)
         logging.error("url : {}.  {}".format(url, str(e)))
 
 
@@ -60,7 +62,7 @@ def extract_category(browser: webdriver, keyword, location, threads_num, max_scr
         i += 1
         sys.stdout.write("\r[Extracting: {}/{}]".format(i, total))
         sys.stdout.flush()
-        time.sleep(0.1)
+        time.sleep(1.1)
         t = threading.Thread(target=run_category_extraction, args=(url, companies_infos, keyword))
         t.daemon = True
         t.start()
@@ -69,7 +71,7 @@ def extract_category(browser: webdriver, keyword, location, threads_num, max_scr
             time.sleep(0.4)
     print("l2")
     for i in trds:
-        i.join(60)
+        i.join(60 * 2)
     print("l4")
     logging.info("Finished. keyword: {},  companies: {}".format(keyword, len(companies_infos)))
     return companies_infos
