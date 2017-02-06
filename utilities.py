@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import time
 import json
+import random
 
 
 def setup_phantomjs_browser(maximize=False):
@@ -21,6 +22,18 @@ def setup_chrome_browser(maximize=True):
     if maximize:
         chrome.maximize_window()
     return chrome
+
+
+#def setup_chrome_browser(maximize=True):
+#    with open('proxies.txt') as f:
+#        lines = f.readlines()
+#        PROXY = random.choice(lines)
+#    chrome_options = webdriver.ChromeOptions()
+#    chrome_options.add_argument('--proxy-server=%s' % PROXY)
+#    chrome = webdriver.Chrome("chromedriver", chrome_options=chrome_options)
+#    if maximize:
+#        chrome.maximize_window()
+#    return chrome
 
 def read_urls_from_file(name):
     urls = []

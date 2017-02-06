@@ -85,7 +85,7 @@ def search_keyword_in_location(keyword, location, browser, search_type="category
         company_name_match_button.click()
         time.sleep(10)
 
-    browser.save_screenshot("start.png")
+    #browser.save_screenshot("start.png")
 
 
 def extract(location, keyword, search_type="company_name"):

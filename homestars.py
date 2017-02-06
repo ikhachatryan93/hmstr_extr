@@ -16,16 +16,17 @@ homestars_url = "https://www.homestars.com/"
 
 def get_companies_urls(browser, max_scroll_downs):
     urls = []
-    while utilities.scroll_down(browser, ".next_page", 50):
-        start = time.time()
-        companies_results = browser.find_elements_by_css_selector("." + HomestarCompanyInfo.COMPANY_RESULTS_CSS_CLASS)
-        for company_result in companies_results:
-            ext_url = company_result.find_element_by_css_selector("." + HomestarCompanyInfo.COMPANY_URL_CSS_CLASS).find_element_by_tag_name("a").get_attribute("href")
-            urls.append(ext_url)
-        urls = list(set(urls))
-        end = time.time()
-        print("time = {}".format(end - start))
-        print("extracted {} urls".format(len(urls)))
+    utilities.scroll_down(browser, ".next_page", 100)
+    start = time.time()
+    companies_results = browser.find_elements_by_css_selector("." + HomestarCompanyInfo.COMPANY_RESULTS_CSS_CLASS)
+    for company_result in companies_results:
+        ext_url = company_result.find_element_by_css_selector("." + HomestarCompanyInfo.COMPANY_URL_CSS_CLASS).find_element_by_tag_name("a").get_attribute("href")
+        urls.append(ext_url)
+    end = time.time()
+    print("time = {}".format(end - start))
+    print("extracted {} urls".format(len(urls)))
+    urls = list(set(urls))
+    print("Deleting overlaps, total left {} urls".format(len(urls)))
     browser.quit()
 
     return urls
@@ -36,10 +37,12 @@ def run_category_extraction(url, companies_infos, keyword):
         company = HomestarCompanyInfo(urljoin(homestars_url, url), keyword)
         company.extract_company()
         companies_infos.append(company.company_info)
-    except Exception as e:
+    except:
         time.sleep(3)
-        company = HomestarCompanyInfo(urljoin(homestars_url, url), keyword)
-        logging.error("url : {}.  {}".format(url, str(e)))
+        try :
+            company = HomestarCompanyInfo(urljoin(homestars_url, url), keyword)
+        except Exception as e:
+            logging.error("url : {}.  {}".format(url, str(e)))
 
 
 def extract_category(browser: webdriver, keyword, location, threads_num, max_scroll_downs):
@@ -62,7 +65,7 @@ def extract_category(browser: webdriver, keyword, location, threads_num, max_scr
         i += 1
         sys.stdout.write("\r[Extracting: {}/{}]".format(i, total))
         sys.stdout.flush()
-        time.sleep(1.1)
+        time.sleep(0.3)
         t = threading.Thread(target=run_category_extraction, args=(url, companies_infos, keyword))
         t.daemon = True
         t.start()
@@ -71,7 +74,7 @@ def extract_category(browser: webdriver, keyword, location, threads_num, max_scr
             time.sleep(0.4)
     print("l2")
     for i in trds:
-        i.join(60 * 2)
+        i.join(10)
     print("l4")
     logging.info("Finished. keyword: {},  companies: {}".format(keyword, len(companies_infos)))
     return companies_infos

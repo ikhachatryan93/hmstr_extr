@@ -7,6 +7,7 @@ from datetime import datetime
 import configparser
 import time
 import utilities
+import hashlib
 import logging
 
 logFormatter = logging.Formatter("%(asctime)s [%(threadName)-12.12s] [%(levelname)-5.5s]  %(message)s")
@@ -22,6 +23,11 @@ homestars_url = "https://www.homestars.com/"
 
 extract_reviews = True
 extract_images = True
+
+def get_id(s):
+    m = hashlib.md5()
+    m.update(s.encode("utf-8"))
+    return str(int(m.hexdigest(), 16))[0:10]
 
 
 def parse_extraction_info_from_config_file():
@@ -41,11 +47,11 @@ class HomestarCompanyInfo:
     COMPANY_URL_CSS_CLASS = "company-result__name"
     COMPANY_CATEGORY_CSS_CLASS = "company-result__categories"
 
-    def __init__(self, company_url, keyword, browser_name="chrome"):
+    def __init__(self, company_url, keyword, browser_name="chrome", country = "Canada"):
         self.company_info = dict(
-            url_name=company_url, keyword=keyword, shop_name="",
-            category_name="", shop_logo="", contact_person_name="",
-            country_name="Canada", province="", city="",
+            url_name=company_url, url_id=get_id(company_url), keyword=keyword, keyword_id=get_id(keyword), shop_name="",
+            category_name="", category_id="", shop_logo="", contact_person_name="",
+            country_name=country, country_id=get_id(country), province="", city="",
             location="", address="", phone="", year_established="",
             number_of_employees="", payment_methods="", licenses="",
             workers_compensation="", is_bonded="", warranty_terms="",
@@ -60,6 +66,7 @@ class HomestarCompanyInfo:
             self.company_page = utilities.setup_chrome_browser(maximize=True)
 
         self.company_page.get(self.company_info["url_name"])
+        #self.company_page.save_screenshot("aaa.png")
         self.company_page_source = BeautifulSoup(self.company_page.page_source, "html5lib")
         self.company_profile_details = self.company_page_source.find("div", {"class", "company-profile__details"})
         self.company_address_info = self.company_page_source.find("address", {"class": "company-header__address"})
@@ -79,6 +86,7 @@ class HomestarCompanyInfo:
                 logging.error(self.NF + "category names")
                 return
 
+        self.company_info["category_id"] = get_id(categories.strip(", "))
         self.company_info["category_name"] = categories.strip(", ")
 
     def get_company_name(self):
@@ -89,6 +97,7 @@ class HomestarCompanyInfo:
             logging.error(self.NF + "company name")
             return
 
+        self.company_info["shop_id"] = get_id(company_name.strip())
         self.company_info["shop_name"] = company_name.strip()
 
     def get_contact_person_name(self):
